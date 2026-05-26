@@ -8,15 +8,16 @@ exports.checkout = async (req, res) => {
     return res.status(400).json({ message: "Data tidak lengkap" });
   }
 
-  const connection = await db.getConnection();
+  // PostgreSQL menggunakan client dari pool untuk transaction
+  const client = await db.connect();
   try {
-    await connection.beginTransaction();
+    await client.query("BEGIN");
 
-    // ✅ Pakai tabel 'transactions' sesuai schema database
-    const [orderResult] = await connection.execute(
+    const orderResult = await client.query(
       `INSERT INTO transactions 
         (user_id, total_amount, full_name, shipping_address, city, postal_code, status) 
-       VALUES (?, ?, ?, ?, ?, ?, 'completed')`,
+       VALUES ($1, $2, $3, $4, $5, $6, 'completed')
+       RETURNING id`,
       [
         userId,
         totalAmount,
@@ -27,34 +28,32 @@ exports.checkout = async (req, res) => {
       ],
     );
 
-    const transactionId = orderResult.insertId;
+    const transactionId = orderResult.rows[0].id;
 
     for (const item of cartItems) {
-      // ✅ Pakai tabel 'transaction_items' + kolom 'book_id' dari cart item
-      await connection.execute(
+      await client.query(
         `INSERT INTO transaction_items (transaction_id, book_id, quantity, price) 
-         VALUES (?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4)`,
         [transactionId, item.book_id, item.quantity, item.price],
       );
 
-      // ✅ Kurangi stok buku
-      await connection.execute(
-        `UPDATE books SET stock = stock - ? WHERE id = ?`,
-        [item.quantity, item.book_id],
-      );
+      await client.query(`UPDATE books SET stock = stock - $1 WHERE id = $2`, [
+        item.quantity,
+        item.book_id,
+      ]);
     }
 
-    await connection.commit();
+    await client.query("COMMIT");
     res.status(201).json({
       success: true,
       message: "Order berhasil",
       orderId: transactionId,
     });
   } catch (error) {
-    await connection.rollback();
+    await client.query("ROLLBACK");
     console.error("Checkout error:", error);
     res.status(500).json({ message: "Terjadi kesalahan pada transaksi" });
   } finally {
-    connection.release();
+    client.release();
   }
 };

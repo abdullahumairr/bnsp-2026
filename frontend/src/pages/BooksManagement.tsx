@@ -163,7 +163,7 @@ export const BooksManagement: React.FC = () => {
                 <tr key={book.id} className="hover:bg-neutral-50/50 transition">
                   <td className="p-4">
                     <img
-                      src={`http://localhost:5000/uploads/${book.image_url || "default.jpg"}`}
+                      src={book.image_url || "/placeholder.jpg"}
                       alt=""
                       className="w-10 h-14 object-cover border border-neutral-200"
                     />

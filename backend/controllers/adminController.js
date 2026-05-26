@@ -4,18 +4,17 @@ const bcrypt = require("bcryptjs");
 // --- DASHBOARD METRICS ---
 exports.getDashboardMetrics = async (req, res) => {
   try {
-    const [[sales]] = await db.query(
-      'SELECT SUM(total_amount) as total FROM transactions WHERE status="completed"',
+    const salesResult = await db.query(
+      `SELECT SUM(total_amount) as total FROM transactions WHERE status='completed'`,
     );
-    const [[books]] = await db.query(
-      "SELECT SUM(stock) as total_stock FROM books",
+    const booksResult = await db.query(
+      `SELECT SUM(stock) as total_stock FROM books`,
     );
-    const [[users]] = await db.query(
-      "SELECT COUNT(id) as total_users FROM users",
+    const usersResult = await db.query(
+      `SELECT COUNT(id) as total_users FROM users`,
     );
 
-    // ✅ Ambil SEMUA transaksi, bukan hanya 3
-    const [allTransactions] = await db.query(`
+    const transResult = await db.query(`
       SELECT 
         t.id,
         t.total_amount,
@@ -23,7 +22,7 @@ exports.getDashboardMetrics = async (req, res) => {
         t.created_at,
         t.full_name,
         t.city,
-        GROUP_CONCAT(b.title SEPARATOR ', ') AS books_title
+        STRING_AGG(b.title, ', ') AS books_title
       FROM transactions t 
       LEFT JOIN transaction_items ti ON t.id = ti.transaction_id
       LEFT JOIN books b ON ti.book_id = b.id
@@ -32,10 +31,10 @@ exports.getDashboardMetrics = async (req, res) => {
     `);
 
     res.status(200).json({
-      totalSales: sales.total || 0,
-      totalBooks: books.total_stock || 0,
-      totalUsers: users.total_users || 0,
-      recentTransactions: allTransactions,
+      totalSales: salesResult.rows[0].total || 0,
+      totalBooks: booksResult.rows[0].total_stock || 0,
+      totalUsers: usersResult.rows[0].total_users || 0,
+      recentTransactions: transResult.rows,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -55,10 +54,11 @@ exports.createBook = async (req, res) => {
     category_id,
     is_editors_choice,
   } = req.body;
-  const image_url = req.file ? req.file.filename : null;
+  const image_url = req.file ? req.file.path : null; // cloudinary URL
   try {
-    await db.execute(
-      `INSERT INTO books (title, author, price, discount_price, stock, description, technical_details, image_url, category_id, is_editors_choice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    await db.query(
+      `INSERT INTO books (title, author, price, discount_price, stock, description, technical_details, image_url, category_id, is_editors_choice) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         title,
         author,
@@ -69,7 +69,7 @@ exports.createBook = async (req, res) => {
         technical_details,
         image_url,
         category_id,
-        is_editors_choice || 0,
+        is_editors_choice || false,
       ],
     );
     res.status(201).json({ message: "Book created successfully" });
@@ -91,26 +91,47 @@ exports.updateBook = async (req, res) => {
     is_editors_choice,
   } = req.body;
   const bookId = req.params.id;
+
   try {
-    let query = `UPDATE books SET title=?, author=?, price=?, discount_price=?, stock=?, description=?, technical_details=?, category_id=?, is_editors_choice=?`;
-    let params = [
-      title,
-      author,
-      price,
-      discount_price || null,
-      stock,
-      description,
-      technical_details,
-      category_id,
-      is_editors_choice,
-    ];
+    let query;
+    let params;
+
     if (req.file) {
-      query += `, image_url=?`;
-      params.push(req.file.filename);
+      query = `UPDATE books SET title=$1, author=$2, price=$3, discount_price=$4, stock=$5, 
+               description=$6, technical_details=$7, category_id=$8, is_editors_choice=$9, 
+               image_url=$10 WHERE id=$11`;
+      params = [
+        title,
+        author,
+        price,
+        discount_price || null,
+        stock,
+        description,
+        technical_details,
+        category_id,
+        is_editors_choice,
+        req.file.path,
+        bookId,
+      ];
+    } else {
+      query = `UPDATE books SET title=$1, author=$2, price=$3, discount_price=$4, stock=$5, 
+               description=$6, technical_details=$7, category_id=$8, is_editors_choice=$9 
+               WHERE id=$10`;
+      params = [
+        title,
+        author,
+        price,
+        discount_price || null,
+        stock,
+        description,
+        technical_details,
+        category_id,
+        is_editors_choice,
+        bookId,
+      ];
     }
-    query += ` WHERE id=?`;
-    params.push(bookId);
-    await db.execute(query, params);
+
+    await db.query(query, params);
     res.status(200).json({ message: "Book updated successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -119,7 +140,7 @@ exports.updateBook = async (req, res) => {
 
 exports.deleteBook = async (req, res) => {
   try {
-    await db.execute("DELETE FROM books WHERE id = ?", [req.params.id]);
+    await db.query("DELETE FROM books WHERE id = $1", [req.params.id]);
     res.status(200).json({ message: "Book deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -129,10 +150,10 @@ exports.deleteBook = async (req, res) => {
 // --- USER MANAGEMENT ---
 exports.getAllUsers = async (req, res) => {
   try {
-    const [users] = await db.execute(
+    const result = await db.query(
       "SELECT id, full_name AS username, email, role, created_at FROM users ORDER BY created_at DESC",
     );
-    res.status(200).json(users);
+    res.status(200).json(result.rows);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -146,16 +167,15 @@ exports.createUser = async (req, res) => {
       .json({ message: "Username, email, dan password wajib diisi" });
   }
   try {
-    const [existing] = await db.execute(
-      "SELECT id FROM users WHERE email = ?",
-      [email],
-    );
-    if (existing.length > 0) {
+    const existing = await db.query("SELECT id FROM users WHERE email = $1", [
+      email,
+    ]);
+    if (existing.rows.length > 0) {
       return res.status(400).json({ message: "Email sudah terdaftar" });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    await db.execute(
-      "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)",
+    await db.query(
+      "INSERT INTO users (full_name, email, password, role) VALUES ($1, $2, $3, $4)",
       [username, email, hashedPassword, role || "user"],
     );
     res.status(201).json({ message: "User berhasil dibuat" });
@@ -171,24 +191,24 @@ exports.updateUser = async (req, res) => {
     return res.status(400).json({ message: "Username dan email wajib diisi" });
   }
   try {
-    const [existing] = await db.execute(
-      "SELECT id FROM users WHERE email = ? AND id != ?",
+    const existing = await db.query(
+      "SELECT id FROM users WHERE email = $1 AND id != $2",
       [email, userId],
     );
-    if (existing.length > 0) {
+    if (existing.rows.length > 0) {
       return res
         .status(400)
         .json({ message: "Email sudah digunakan user lain" });
     }
     if (password && password.trim() !== "") {
       const hashedPassword = await bcrypt.hash(password, 10);
-      await db.execute(
-        "UPDATE users SET full_name = ?, email = ?, password = ?, role = ? WHERE id = ?",
+      await db.query(
+        "UPDATE users SET full_name = $1, email = $2, password = $3, role = $4 WHERE id = $5",
         [username, email, hashedPassword, role || "user", userId],
       );
     } else {
-      await db.execute(
-        "UPDATE users SET full_name = ?, email = ?, role = ? WHERE id = ?",
+      await db.query(
+        "UPDATE users SET full_name = $1, email = $2, role = $3 WHERE id = $4",
         [username, email, role || "user", userId],
       );
     }
@@ -201,7 +221,7 @@ exports.updateUser = async (req, res) => {
 exports.updateUserRole = async (req, res) => {
   const { role } = req.body;
   try {
-    await db.execute("UPDATE users SET role = ? WHERE id = ?", [
+    await db.query("UPDATE users SET role = $1 WHERE id = $2", [
       role,
       req.params.id,
     ]);
@@ -215,13 +235,11 @@ exports.deleteUser = async (req, res) => {
   try {
     const userId = req.params.id;
     if (parseInt(userId) === req.userId) {
-      return res
-        .status(400)
-        .json({
-          message: "You cannot revoke your own administrative account access.",
-        });
+      return res.status(400).json({
+        message: "You cannot revoke your own administrative account access.",
+      });
     }
-    await db.execute("DELETE FROM users WHERE id = ?", [userId]);
+    await db.query("DELETE FROM users WHERE id = $1", [userId]);
     res
       .status(200)
       .json({ message: "User successfully purged from archives." });

@@ -1,10 +1,9 @@
 const db = require("../config/db");
 
-// GET /api/cart — Ambil semua item cart milik user
 exports.getCart = async (req, res) => {
   const userId = req.userId;
   try {
-    const [items] = await db.execute(
+    const result = await db.query(
       `SELECT 
         cart.id,
         cart.quantity,
@@ -16,13 +15,12 @@ exports.getCart = async (req, res) => {
         books.image_url
        FROM cart
        JOIN books ON cart.book_id = books.id
-       WHERE cart.user_id = ?`,
-      [userId]
+       WHERE cart.user_id = $1`,
+      [userId],
     );
 
-    // Format agar sesuai dengan CartItem interface di frontend
-    const formatted = items.map((item) => ({
-      id: item.id,           // cart.id (dipakai untuk update/delete)
+    const formatted = result.rows.map((item) => ({
+      id: item.id,
       book_id: item.book_id,
       title: item.title,
       author: item.author,
@@ -39,7 +37,6 @@ exports.getCart = async (req, res) => {
   }
 };
 
-// POST /api/cart — Tambah buku ke cart (jika sudah ada, tambah quantity)
 exports.addToCart = async (req, res) => {
   const userId = req.userId;
   const { bookId, quantity = 1 } = req.body;
@@ -47,23 +44,20 @@ exports.addToCart = async (req, res) => {
   if (!bookId) return res.status(400).json({ message: "bookId diperlukan" });
 
   try {
-    // Cek apakah buku sudah ada di cart user ini
-    const [existing] = await db.execute(
-      "SELECT id, quantity FROM cart WHERE user_id = ? AND book_id = ?",
-      [userId, bookId]
+    const existing = await db.query(
+      "SELECT id, quantity FROM cart WHERE user_id = $1 AND book_id = $2",
+      [userId, bookId],
     );
 
-    if (existing.length > 0) {
-      // Sudah ada → update quantity (tambahkan)
-      await db.execute(
-        "UPDATE cart SET quantity = quantity + ? WHERE id = ?",
-        [quantity, existing[0].id]
-      );
+    if (existing.rows.length > 0) {
+      await db.query("UPDATE cart SET quantity = quantity + $1 WHERE id = $2", [
+        quantity,
+        existing.rows[0].id,
+      ]);
     } else {
-      // Belum ada → insert baru
-      await db.execute(
-        "INSERT INTO cart (user_id, book_id, quantity) VALUES (?, ?, ?)",
-        [userId, bookId, quantity]
+      await db.query(
+        "INSERT INTO cart (user_id, book_id, quantity) VALUES ($1, $2, $3)",
+        [userId, bookId, quantity],
       );
     }
 
@@ -74,7 +68,6 @@ exports.addToCart = async (req, res) => {
   }
 };
 
-// PUT /api/cart/:id — Update quantity item cart berdasarkan cart.id
 exports.updateCart = async (req, res) => {
   const userId = req.userId;
   const cartId = req.params.id;
@@ -85,16 +78,15 @@ exports.updateCart = async (req, res) => {
   }
 
   try {
-    // Pastikan cart item ini milik user yang login
-    const [item] = await db.execute(
-      "SELECT id FROM cart WHERE id = ? AND user_id = ?",
-      [cartId, userId]
+    const item = await db.query(
+      "SELECT id FROM cart WHERE id = $1 AND user_id = $2",
+      [cartId, userId],
     );
-    if (item.length === 0) {
+    if (item.rows.length === 0) {
       return res.status(404).json({ message: "Item tidak ditemukan" });
     }
 
-    await db.execute("UPDATE cart SET quantity = ? WHERE id = ?", [
+    await db.query("UPDATE cart SET quantity = $1 WHERE id = $2", [
       quantity,
       cartId,
     ]);
@@ -105,21 +97,20 @@ exports.updateCart = async (req, res) => {
   }
 };
 
-// DELETE /api/cart/:id — Hapus item dari cart berdasarkan cart.id
 exports.removeFromCart = async (req, res) => {
   const userId = req.userId;
   const cartId = req.params.id;
 
   try {
-    const [item] = await db.execute(
-      "SELECT id FROM cart WHERE id = ? AND user_id = ?",
-      [cartId, userId]
+    const item = await db.query(
+      "SELECT id FROM cart WHERE id = $1 AND user_id = $2",
+      [cartId, userId],
     );
-    if (item.length === 0) {
+    if (item.rows.length === 0) {
       return res.status(404).json({ message: "Item tidak ditemukan" });
     }
 
-    await db.execute("DELETE FROM cart WHERE id = ?", [cartId]);
+    await db.query("DELETE FROM cart WHERE id = $1", [cartId]);
     res.status(200).json({ message: "Item berhasil dihapus dari cart" });
   } catch (error) {
     console.error("removeFromCart error:", error);
@@ -127,11 +118,10 @@ exports.removeFromCart = async (req, res) => {
   }
 };
 
-// DELETE /api/cart — Hapus semua item cart milik user (dipanggil setelah checkout)
 exports.clearCart = async (req, res) => {
   const userId = req.userId;
   try {
-    await db.execute("DELETE FROM cart WHERE user_id = ?", [userId]);
+    await db.query("DELETE FROM cart WHERE user_id = $1", [userId]);
     res.status(200).json({ message: "Cart berhasil dikosongkan" });
   } catch (error) {
     console.error("clearCart error:", error);

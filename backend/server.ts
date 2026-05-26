@@ -1,8 +1,9 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import path from "path";
-import apiRoutes from "./routes/api";
+// Jalur import harus menyertakan .js di ujungnya
+import express from 'express';
+import cors from 'cors';
+import authRoutes from './routes/authRoutes.js'; 
+import userRoutes from './routes/userRoutes.js';
+import bookRoutes from './routes/bookRoutes.js'; // sesuaikan dengan nama file kamu
 
 dotenv.config();
 

@@ -1,35 +1,59 @@
-const db = require('../config/db');
+const db = require("../config/db");
 
 exports.checkout = async (req, res) => {
-  const { total_amount, tax, shipping_fee, full_name, shipping_address, city, postal_code, items } = req.body;
+  const { cartItems, totalAmount, shippingDetails } = req.body;
+  const userId = req.userId;
+
+  if (!cartItems || cartItems.length === 0 || !shippingDetails) {
+    return res.status(400).json({ message: "Data tidak lengkap" });
+  }
+
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
-    const [order] = await connection.execute(
-      `INSERT INTO transactions (user_id, total_amount, tax, shipping_fee, full_name, shipping_address, city, postal_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed')`,
-      [req.userId, total_amount, tax, shipping_fee, full_name, shipping_address, city, postal_code]
+    // ✅ Pakai tabel 'transactions' sesuai schema database
+    const [orderResult] = await connection.execute(
+      `INSERT INTO transactions 
+        (user_id, total_amount, full_name, shipping_address, city, postal_code, status) 
+       VALUES (?, ?, ?, ?, ?, ?, 'completed')`,
+      [
+        userId,
+        totalAmount,
+        shippingDetails.fullName,
+        shippingDetails.shippingAddress,
+        shippingDetails.city,
+        shippingDetails.postalCode,
+      ],
     );
 
-    const transactionId = order.insertId;
+    const transactionId = orderResult.insertId;
 
-    for (let item of items) {
+    for (const item of cartItems) {
+      // ✅ Pakai tabel 'transaction_items' + kolom 'book_id' dari cart item
       await connection.execute(
-        `INSERT INTO transaction_items (transaction_id, book_id, quantity, price) VALUES (?, ?, ?, ?)`,
-        [transactionId, item.id, item.quantity, item.price]
+        `INSERT INTO transaction_items (transaction_id, book_id, quantity, price) 
+         VALUES (?, ?, ?, ?)`,
+        [transactionId, item.book_id, item.quantity, item.price],
       );
-      // Potong Stok
+
+      // ✅ Kurangi stok buku
       await connection.execute(
         `UPDATE books SET stock = stock - ? WHERE id = ?`,
-        [item.quantity, item.id]
+        [item.quantity, item.book_id],
       );
     }
 
     await connection.commit();
-    res.status(201).json({ message: 'Purchase processed successfully', transactionId });
+    res.status(201).json({
+      success: true,
+      message: "Order berhasil",
+      orderId: transactionId,
+    });
   } catch (error) {
     await connection.rollback();
-    res.status(500).json({ message: error.message });
+    console.error("Checkout error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada transaksi" });
   } finally {
     connection.release();
   }

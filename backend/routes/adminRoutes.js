@@ -14,8 +14,10 @@ router.post("/books", upload.single("image"), adminController.createBook);
 router.put("/books/:id", upload.single("image"), adminController.updateBook);
 router.delete("/books/:id", adminController.deleteBook);
 
-// Users Management (Read & Update Role)
+// Users Management
 router.get("/users", adminController.getAllUsers);
+router.post("/users/register", adminController.createUser);
+router.put("/users/:id", adminController.updateUser);
 router.put("/users/:id/role", adminController.updateUserRole);
 router.delete("/users/:id", adminController.deleteUser);
 

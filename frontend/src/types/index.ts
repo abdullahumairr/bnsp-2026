@@ -14,7 +14,7 @@ export interface Book {
   stock: number;
   description: string;
   technical_details: string;
-  image_url: string | null;
+  image_url: string;
   category_id: number;
   category_name?: string;
   is_editors_choice: number;
@@ -22,4 +22,10 @@ export interface Book {
 
 export interface CartItem extends Book {
   quantity: number;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
 }

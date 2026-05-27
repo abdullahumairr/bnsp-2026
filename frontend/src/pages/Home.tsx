@@ -7,7 +7,7 @@ import { Navbar } from "../components/Navbar";
 
 export const Home: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
-  const [categories, setCategories] = useState([]);
+  const [, setCategories] = useState([]);
   const [selectedCat, setSelectedCat] = useState("All Works");
 
   useEffect(() => {

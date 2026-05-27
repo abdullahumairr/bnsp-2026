@@ -45,7 +45,7 @@ export const DetailBook: React.FC = () => {
       <div className="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-2 gap-16">
         <div className="bg-neutral-100 p-12 flex justify-center items-center h-[500px]">
           <img
-            src={`http://localhost:5000/uploads/${book.image_url}`}
+            src={book.image_url || "/placeholder.jpg"}
             alt={book.title}
             className="h-full object-contain shadow-2xl"
           />
@@ -100,7 +100,7 @@ export const DetailBook: React.FC = () => {
               className="border border-neutral-200 p-6 bg-white flex flex-col justify-between hover:shadow-md transition"
             >
               <img
-                src={`http://localhost:5000/uploads/${rec.image_url}`}
+                src={rec.image_url || "/placeholder.jpg"}
                 alt={rec.title}
                 className="h-40 object-contain mx-auto mb-4"
               />

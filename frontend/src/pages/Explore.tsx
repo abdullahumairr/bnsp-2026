@@ -91,7 +91,7 @@ export const Explore: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-2 gap-16">
         <div className="flex justify-center items-start bg-neutral-100 p-12 border border-neutral-200/60">
           <img
-            src={`http://localhost:5000/uploads/${activeBook.image_url || "default.jpg"}`}
+            src={activeBook.image_url || "/placeholder.jpg"}
             alt={activeBook.title}
             className="w-80 shadow-2xl border border-neutral-300 object-cover"
           />
@@ -231,7 +231,7 @@ export const Explore: React.FC = () => {
               >
                 <div className="flex justify-center bg-neutral-50 p-6 mb-4 border border-neutral-100">
                   <img
-                    src={`http://localhost:5000/uploads/${book.image_url || "default.jpg"}`}
+                    src={book.image_url || "/placeholder.jpg"}
                     alt=""
                     className="h-48 object-cover shadow-md"
                   />

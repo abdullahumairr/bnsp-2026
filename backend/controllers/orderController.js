@@ -15,12 +15,13 @@ exports.checkout = async (req, res) => {
 
     const orderResult = await client.query(
       `INSERT INTO transactions 
-        (user_id, total_amount, full_name, shipping_address, city, postal_code, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, 'completed')
-       RETURNING id`,
+    (user_id, total_amount, tax, full_name, shipping_address, city, postal_code, status) 
+   VALUES ($1, $2, $3, $4, $5, $6, $7, 'completed')
+   RETURNING id`,
       [
         userId,
         totalAmount,
+        (totalAmount * 0.08) / 1.08, 
         shippingDetails.fullName,
         shippingDetails.shippingAddress,
         shippingDetails.city,

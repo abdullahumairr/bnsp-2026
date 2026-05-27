@@ -90,7 +90,7 @@ export const Cart: React.FC = () => {
                   >
                     <div className="flex items-center space-x-6">
                       <img
-                        src={`http://localhost:5000/uploads/${item.image_url || "default.jpg"}`}
+                        src={item.image_url || "/placeholder.jpg"}
                         alt={item.title}
                         className="w-16 h-24 object-cover shadow"
                       />
@@ -236,4 +236,3 @@ export const Cart: React.FC = () => {
     </div>
   );
 };
-    

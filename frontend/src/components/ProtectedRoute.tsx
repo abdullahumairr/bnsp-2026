@@ -23,10 +23,5 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/" replace />;
   }
 
-  // Route user biasa, tapi admin yang masuk → ke /admin
-  if (!allowedRole && user.role === "admin") {
-    return <Navigate to="/admin" replace />;
-  }
-
   return <>{children}</>;
 };

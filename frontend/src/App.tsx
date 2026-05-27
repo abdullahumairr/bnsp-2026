@@ -15,15 +15,13 @@ import { BooksManagement } from "./pages/BooksManagement";
 import { UserManagement } from "./pages/UsersManagement";
 import { Explore } from "./pages/Explore";
 
-// Komponen untuk redirect /login jika sudah login
+// Redirect ke home/admin kalau sudah login
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const token = localStorage.getItem("bv_token");
   const user = JSON.parse(localStorage.getItem("bv_user") || "{}");
-
   if (token) {
-    // Sudah login → arahkan ke halaman yang sesuai rolenya
     return <Navigate to={user.role === "admin" ? "/admin" : "/"} replace />;
   }
   return <>{children}</>;
@@ -34,7 +32,12 @@ export const App: React.FC = () => {
     <CartProvider>
       <BrowserRouter>
         <Routes>
-          {/* ✅ Login & Register: redirect jika sudah login */}
+          {/* Public routes - bisa diakses tanpa login */}
+          <Route path="/" element={<Home />} />
+          <Route path="/explore" element={<Explore />} />
+          <Route path="/book/:id" element={<DetailBook />} />
+
+          {/* Login & Register - redirect jika sudah login */}
           <Route
             path="/login"
             element={
@@ -52,31 +55,7 @@ export const App: React.FC = () => {
             }
           />
 
-          {/* ✅ User routes: admin akan diredirect ke /admin */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/explore"
-            element={
-              <ProtectedRoute>
-                <Explore />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/book/:id"
-            element={
-              <ProtectedRoute>
-                <DetailBook />
-              </ProtectedRoute>
-            }
-          />
+          {/* Protected - harus login */}
           <Route
             path="/cart"
             element={
@@ -94,7 +73,7 @@ export const App: React.FC = () => {
             }
           />
 
-          {/* ✅ Admin routes: user biasa akan diredirect ke / */}
+          {/* Admin only */}
           <Route
             path="/admin"
             element={
@@ -120,7 +99,7 @@ export const App: React.FC = () => {
             }
           />
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </CartProvider>

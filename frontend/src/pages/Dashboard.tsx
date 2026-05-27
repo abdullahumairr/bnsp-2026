@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 import { SidebarAdmin } from "../components/SidebarAdmin";
 
 const ITEMS_PER_PAGE = 10;
@@ -11,12 +11,7 @@ export const Dashboard: React.FC = () => {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("bv_token");
-    axios
-      .get("http://localhost:5000/api/admin/metrics", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setMetrics(res.data));
+    API.get("/admin/metrics").then((res) => setMetrics(res.data));
   }, []);
 
   if (!metrics)
@@ -26,7 +21,6 @@ export const Dashboard: React.FC = () => {
       </div>
     );
 
-  // Filter berdasarkan search
   const filtered = metrics.recentTransactions.filter(
     (tx: any) =>
       tx.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -34,17 +28,11 @@ export const Dashboard: React.FC = () => {
       String(tx.id).includes(search),
   );
 
-  // Pagination
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-    setCurrentPage(1);
-  };
 
   return (
     <div className="flex bg-[#fbfbfa] min-h-screen">
@@ -58,8 +46,6 @@ export const Dashboard: React.FC = () => {
             Insights and administrative controls for the BookVerse ecosystem.
           </p>
         </div>
-
-        {/* 3 Metric Cards */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="border border-neutral-200 p-6 bg-white space-y-2">
             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 block">
@@ -94,8 +80,6 @@ export const Dashboard: React.FC = () => {
             <p className="text-[11px] text-neutral-400">Registered accounts</p>
           </div>
         </section>
-
-        {/* Tabel Semua Transaksi */}
         <section className="border border-neutral-200 bg-white">
           <div className="px-6 pt-6 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-100">
             <div>
@@ -110,12 +94,14 @@ export const Dashboard: React.FC = () => {
             <input
               type="text"
               value={search}
-              onChange={handleSearch}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Search by buyer, book, or ID..."
               className="border border-neutral-200 px-4 py-2 text-sm outline-none focus:border-black bg-neutral-50 w-full md:w-72"
             />
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -165,13 +151,7 @@ export const Dashboard: React.FC = () => {
                       </td>
                       <td className="py-4 px-6 text-center">
                         <span
-                          className={`text-[10px] px-2.5 py-1 font-bold uppercase tracking-wider ${
-                            tx.status === "completed"
-                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                              : tx.status === "pending"
-                                ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                : "bg-red-50 text-red-700 border border-red-200"
-                          }`}
+                          className={`text-[10px] px-2.5 py-1 font-bold uppercase tracking-wider ${tx.status === "completed" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : tx.status === "pending" ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-red-50 text-red-700 border border-red-200"}`}
                         >
                           {tx.status}
                         </span>
@@ -191,8 +171,6 @@ export const Dashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="px-6 py-4 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-500">
               <span>
@@ -206,41 +184,6 @@ export const Dashboard: React.FC = () => {
                 >
                   ← Prev
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(
-                    (p) =>
-                      p === 1 ||
-                      p === totalPages ||
-                      Math.abs(p - currentPage) <= 1,
-                  )
-                  .reduce((acc: (number | string)[], p, idx, arr) => {
-                    if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1)
-                      acc.push("...");
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((p, idx) =>
-                    p === "..." ? (
-                      <span
-                        key={`dots-${idx}`}
-                        className="px-3 py-1.5 text-neutral-300"
-                      >
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        onClick={() => setCurrentPage(p as number)}
-                        className={`px-3 py-1.5 border transition ${
-                          currentPage === p
-                            ? "bg-[#2c3e35] text-white border-[#2c3e35]"
-                            : "border-neutral-200 hover:bg-neutral-50"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ),
-                  )}
                 <button
                   onClick={() =>
                     setCurrentPage((p) => Math.min(totalPages, p + 1))

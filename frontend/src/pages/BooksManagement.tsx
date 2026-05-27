@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 import { SidebarAdmin } from "../components/SidebarAdmin";
 import type { Book, Category } from "../types";
 
@@ -9,8 +10,6 @@ export const BooksManagement: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-
-  // Form States
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [price, setPrice] = useState("");
@@ -22,18 +21,13 @@ export const BooksManagement: React.FC = () => {
   const [isEditorsChoice, setIsEditorsChoice] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  const token = localStorage.getItem("bv_token");
-
   const fetchBooksAndCategories = async () => {
-    const resBooks = await axios.get(
-      "http://localhost:5000/api/books?limit=100",
-    );
-    setBooks(resBooks.data.books);
-    setCategories(resBooks.data.categories);
+    const res = await API.get("/books?limit=100");
+    setBooks(res.data.books);
+    setCategories(res.data.categories);
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchBooksAndCategories();
   }, []);
 
@@ -73,32 +67,21 @@ export const BooksManagement: React.FC = () => {
     formData.append("title", title);
     formData.append("author", author);
     formData.append("price", price);
-    if (discountPrice) formData.append("discount_price", discountPrice);
     formData.append("stock", stock);
     formData.append("category_id", categoryId);
     formData.append("description", description);
     formData.append("technical_details", techDetails);
     formData.append("is_editors_choice", isEditorsChoice ? "1" : "0");
+    if (discountPrice) formData.append("discount_price", discountPrice);
     if (imageFile) formData.append("image", imageFile);
-
     try {
       if (editId) {
-        await axios.put(
-          `http://localhost:5000/api/admin/books/${editId}`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          },
-        );
+        await API.put(`/admin/books/${editId}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       } else {
-        await axios.post("http://localhost:5000/api/admin/books", formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
+        await API.post("/admin/books", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
         });
       }
       setIsModalOpen(false);
@@ -116,9 +99,7 @@ export const BooksManagement: React.FC = () => {
     )
       return;
     try {
-      await axios.delete(`http://localhost:5000/api/admin/books/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await API.delete(`/admin/books/${id}`);
       fetchBooksAndCategories();
     } catch (err) {
       alert("Error executing deletion sequence.");
@@ -145,8 +126,6 @@ export const BooksManagement: React.FC = () => {
             Add New Volume
           </button>
         </div>
-
-        {/* Tabel Data Buku */}
         <div className="border border-neutral-200 bg-white overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -199,10 +178,8 @@ export const BooksManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
-
-        {/* Modal Pop-up (Form Add/Edit) */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-[#fbfbfa] border border-neutral-200 max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto space-y-6">
               <h2 className="font-serif text-2xl">
                 {editId

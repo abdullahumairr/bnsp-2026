@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 export const Register: React.FC = () => {
@@ -13,21 +13,11 @@ export const Register: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
-      // Mengirim data ke backend
-      await axios.post("http://localhost:5000/api/auth/register", {
-        username: formData.username,
-        email: formData.email,
-        password: formData.password,
-        role: "user",
-      });
-
+      await API.post("/auth/register", { ...formData, role: "user" });
       alert("Registrasi berhasil!");
-      navigate("/login"); // Pastikan rute ini ada di App.tsx
+      navigate("/login");
     } catch (err: any) {
-      console.error(err);
-      // Menampilkan pesan error dari backend jika ada
       alert(err.response?.data?.message || "Registrasi gagal");
     }
   };
@@ -40,7 +30,6 @@ export const Register: React.FC = () => {
           <i>Circle of Readers.</i>
         </h1>
       </div>
-
       <div className="p-12 flex items-center justify-center">
         <form onSubmit={handleRegister} className="w-full max-w-sm space-y-4">
           <h2 className="text-2xl font-serif">Create Account</h2>

@@ -2,14 +2,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState } from "react";
 import { useCart } from "../context/CartContext";
-import axios from "axios";
+import API from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 
 export const Cart: React.FC = () => {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
   const navigate = useNavigate();
-
   const [fullName, setFullName] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -26,41 +25,27 @@ export const Cart: React.FC = () => {
 
   const handleCheckout = async () => {
     if (cart.length === 0) return alert("Your cart is empty.");
-    if (!fullName || !address || !city || !postalCode) {
+    if (!fullName || !address || !city || !postalCode)
       return alert("Please fill in all shipping details.");
-    }
-
-    const token = localStorage.getItem("bv_token");
-    if (!token) return navigate("/login");
-
     setIsLoading(true);
     try {
-      await axios.post(
-        "http://localhost:5000/api/orders/checkout",
-        {
-          totalAmount: total,
-          // ✅ Kirim book_id (bukan cart.id) ke backend
-          cartItems: cart.map((item) => ({
-            book_id: item.book_id ?? item.id,
-            quantity: item.quantity,
-            price: Number(item.discount_price || item.price),
-          })),
-          shippingDetails: {
-            fullName,
-            shippingAddress: address,
-            city,
-            postalCode,
-          },
+      await API.post("/orders/checkout", {
+        totalAmount: total,
+        cartItems: cart.map((item) => ({
+          book_id: item.book_id ?? item.id,
+          quantity: item.quantity,
+          price: Number(item.discount_price || item.price),
+        })),
+        shippingDetails: {
+          fullName,
+          shippingAddress: address,
+          city,
+          postalCode,
         },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-
+      });
       await clearCart();
       navigate("/success");
     } catch (err: any) {
-      console.error(err);
       alert(
         err.response?.data?.message || "Checkout failed. Please try again.",
       );
@@ -74,7 +59,6 @@ export const Cart: React.FC = () => {
       <Navbar />
       <div className="max-w-7xl mx-auto px-8 py-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-12">
-          {/* Daftar Buku */}
           <div>
             <h2 className="font-serif text-3xl mb-6">Your Library Selection</h2>
             {cart.length === 0 ? (
@@ -140,8 +124,6 @@ export const Cart: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Form Pengiriman — semua pakai placeholder */}
           <div className="space-y-6">
             <h3 className="font-serif text-2xl border-b border-neutral-200 pb-2">
               Shipping Destination
@@ -198,8 +180,6 @@ export const Cart: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* Order Summary */}
         <div className="border border-neutral-200 p-8 bg-white h-fit space-y-6 lg:sticky lg:top-8">
           <h3 className="font-serif text-2xl mb-4">Order Summary</h3>
           <div className="flex justify-between text-sm text-neutral-600">
@@ -223,11 +203,7 @@ export const Cart: React.FC = () => {
           <button
             onClick={handleCheckout}
             disabled={isLoading || cart.length === 0}
-            className={`w-full py-4 uppercase tracking-widest text-xs font-semibold transition ${
-              isLoading || cart.length === 0
-                ? "bg-neutral-300 cursor-not-allowed text-neutral-500"
-                : "bg-[#2c3e35] text-white hover:bg-emerald-950"
-            }`}
+            className={`w-full py-4 uppercase tracking-widest text-xs font-semibold transition ${isLoading || cart.length === 0 ? "bg-neutral-300 cursor-not-allowed text-neutral-500" : "bg-[#2c3e35] text-white hover:bg-emerald-950"}`}
           >
             {isLoading ? "Processing..." : "Complete Purchase"}
           </button>

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 import { Navbar } from "../components/Navbar";
 import { useCart } from "../context/CartContext";
+import { useNavigate } from "react-router-dom";
 
 interface Book {
   id: number;
@@ -24,16 +25,14 @@ export const Explore: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "description" | "reviews" | "details"
   >("description");
-
-  // ✅ Gunakan CartContext, bukan localStorage
   const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchExploreData = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/books");
+        const res = await API.get("/books");
         const bookList = res.data.books || res.data;
-
         if (bookList && bookList.length > 0) {
           setActiveBook(bookList[0]);
           setRecommendations(bookList.slice(1, 4));
@@ -47,24 +46,24 @@ export const Explore: React.FC = () => {
     fetchExploreData();
   }, []);
 
-  // ✅ Perbaikan: handleAddToCart pakai CartContext + support quantity > 1
   const handleAddToCart = async () => {
+    const token = localStorage.getItem("bv_token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
     if (!activeBook) return;
     setIsAdding(true);
     try {
       await addToCart(activeBook, quantity);
       alert(`${activeBook.title} berhasil ditambahkan ke keranjang!`);
     } catch (err: any) {
-      alert(
-        err.message ||
-          "Gagal menambahkan ke keranjang. Pastikan Anda sudah login.",
-      );
+      alert(err.message || "Gagal menambahkan ke keranjang.");
     } finally {
       setIsAdding(false);
     }
   };
 
-  // Reset quantity saat ganti buku
   const handleSelectBook = (book: Book) => {
     setActiveBook(book);
     setQuantity(1);
@@ -87,7 +86,6 @@ export const Explore: React.FC = () => {
   return (
     <div className="bg-[#fbfbfa] min-h-screen animate-fade-in text-neutral-900">
       <Navbar />
-      {/* Detail Utama Buku */}
       <main className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-2 gap-16">
         <div className="flex justify-center items-start bg-neutral-100 p-12 border border-neutral-200/60">
           <img
@@ -96,7 +94,6 @@ export const Explore: React.FC = () => {
             className="w-80 shadow-2xl border border-neutral-300 object-cover"
           />
         </div>
-
         <div className="space-y-6">
           <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-800">
             New Release • Hardcover
@@ -110,14 +107,12 @@ export const Explore: React.FC = () => {
               {activeBook.author}
             </span>
           </p>
-
           <div className="flex items-center space-x-1 text-amber-500 text-xs">
             <span>★★★★★</span>
             <span className="text-neutral-400 text-[11px] font-mono ml-2">
               (124 Reviews)
             </span>
           </div>
-
           <div className="flex items-baseline space-x-4 pt-2">
             <span className="font-serif text-4xl font-medium">
               $
@@ -129,12 +124,10 @@ export const Explore: React.FC = () => {
               </span>
             )}
           </div>
-
           <p className="text-sm text-neutral-600 font-light leading-relaxed pt-2">
             {activeBook.description ||
-              "A haunting exploration of architectural aesthetics, design memory, and structural decay masterfully crafted for structural discovery."}
+              "A haunting exploration of architectural aesthetics."}
           </p>
-
           <div className="space-y-4 pt-4">
             <div className="flex items-center space-x-3">
               <span className="text-xs uppercase tracking-wider text-neutral-400 font-bold w-16">
@@ -156,16 +149,11 @@ export const Explore: React.FC = () => {
                 </button>
               </div>
             </div>
-
             <div className="flex space-x-4 pt-2">
               <button
                 onClick={handleAddToCart}
                 disabled={isAdding}
-                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-widest transition ${
-                  isAdding
-                    ? "bg-neutral-400 cursor-not-allowed text-white"
-                    : "bg-[#2c3e35] text-white hover:bg-emerald-950"
-                }`}
+                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-widest transition ${isAdding ? "bg-neutral-400 cursor-not-allowed text-white" : "bg-[#2c3e35] text-white hover:bg-emerald-950"}`}
               >
                 {isAdding ? "Adding..." : "Add to Cart"}
               </button>
@@ -177,27 +165,17 @@ export const Explore: React.FC = () => {
         </div>
       </main>
 
-      {/* Tabs Menu Section */}
       <section className="max-w-7xl mx-auto px-6 border-t border-neutral-200 mt-12 pt-8">
         <div className="flex space-x-8 border-b border-neutral-200 pb-px text-xs font-bold uppercase tracking-widest text-neutral-400">
-          <button
-            onClick={() => setActiveTab("description")}
-            className={`pb-3 ${activeTab === "description" ? "text-black border-b-2 border-black" : ""}`}
-          >
-            Description
-          </button>
-          <button
-            onClick={() => setActiveTab("reviews")}
-            className={`pb-3 ${activeTab === "reviews" ? "text-black border-b-2 border-black" : ""}`}
-          >
-            Reviews
-          </button>
-          <button
-            onClick={() => setActiveTab("details")}
-            className={`pb-3 ${activeTab === "details" ? "text-black border-b-2 border-black" : ""}`}
-          >
-            Technical Details
-          </button>
+          {(["description", "reviews", "details"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-3 ${activeTab === tab ? "text-black border-b-2 border-black" : ""}`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
         <div className="py-8 text-sm text-neutral-600 max-w-3xl font-light leading-relaxed">
           {activeTab === "description" && (
@@ -219,7 +197,6 @@ export const Explore: React.FC = () => {
         </div>
       </section>
 
-      {/* Section Recommendations */}
       <section className="bg-neutral-50 border-t border-neutral-200 py-16">
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="font-serif text-3xl mb-8">You might also enjoy</h2>

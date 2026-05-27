@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import axios from "axios";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import API from "../services/api";
 import type { Book } from "../types";
 import { useCart } from "../context/CartContext";
 import { Navbar } from "../components/Navbar";
@@ -14,22 +14,27 @@ export const DetailBook: React.FC = () => {
   } | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    axios
-      .get(`http://localhost:5000/api/books/${id}`)
+    API.get(`/books/${id}`)
       .then((res) => setData(res.data))
       .catch((err) => console.error("Error fetching book:", err));
   }, [id]);
 
   const handleAddToCart = async () => {
+    const token = localStorage.getItem("bv_token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
     if (!data) return;
     setIsAdding(true);
     try {
       await addToCart(data.book, 1);
       alert("Berhasil ditambahkan ke koleksi!");
     } catch (err) {
-      alert("Gagal menambahkan ke keranjang. Pastikan Anda sudah login.");
+      alert("Gagal menambahkan ke keranjang.");
     } finally {
       setIsAdding(false);
     }
@@ -64,19 +69,13 @@ export const DetailBook: React.FC = () => {
           <p className="text-neutral-600 font-light leading-relaxed">
             {book.description}
           </p>
-
           <button
             onClick={handleAddToCart}
             disabled={isAdding}
-            className={`w-full py-4 text-xs uppercase tracking-widest font-semibold transition ${
-              isAdding
-                ? "bg-neutral-400 cursor-not-allowed"
-                : "bg-[#2c3e35] hover:bg-emerald-950 text-white"
-            }`}
+            className={`w-full py-4 text-xs uppercase tracking-widest font-semibold transition ${isAdding ? "bg-neutral-400 cursor-not-allowed" : "bg-[#2c3e35] hover:bg-emerald-950 text-white"}`}
           >
             {isAdding ? "Adding..." : "Add to Cart"}
           </button>
-
           <div className="border-t border-neutral-200 pt-6 mt-8 space-y-4">
             <h4 className="text-xs uppercase tracking-widest font-bold">
               Technical Details
@@ -88,8 +87,6 @@ export const DetailBook: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Editorial Recommendations Area */}
       <section className="max-w-7xl mx-auto px-8 py-16 border-t border-neutral-200">
         <h2 className="font-serif text-3xl mb-8">You might also enjoy</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

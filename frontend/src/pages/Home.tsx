@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 import type { Book } from "../types";
 import { Link } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
@@ -11,18 +10,15 @@ export const Home: React.FC = () => {
   const [selectedCat, setSelectedCat] = useState("All Works");
 
   useEffect(() => {
-    axios
-      .get(`http://localhost:5000/api/books?category=${selectedCat}`)
-      .then((res) => {
-        setBooks(res.data.books);
-        setCategories(res.data.categories);
-      });
+    API.get(`/books?category=${selectedCat}`).then((res) => {
+      setBooks(res.data.books);
+      setCategories(res.data.categories);
+    });
   }, [selectedCat]);
 
   return (
     <div className="bg-[#fbfbfa] min-h-screen">
       <Navbar />
-      {/* Hero */}
       <header className="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
         <div className="space-y-6">
           <span className="text-xs uppercase tracking-widest text-neutral-500 font-semibold">
@@ -56,7 +52,6 @@ export const Home: React.FC = () => {
         </div>
       </header>
 
-      {/* Filter Category & Grid */}
       <main className="max-w-7xl mx-auto px-8 py-12">
         <div className="border-b border-neutral-200 pb-4 mb-8 flex space-x-6 text-sm overflow-x-auto">
           {[
@@ -76,7 +71,6 @@ export const Home: React.FC = () => {
             </button>
           ))}
         </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {books.map((book) => (
             <Link

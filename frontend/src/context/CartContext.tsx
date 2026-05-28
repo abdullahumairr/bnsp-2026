@@ -8,10 +8,10 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import axios from "axios";
+import API from "../services/api";
 
 export interface CartItem {
-  id: number; // cart.id — dipakai untuk update/delete
+  id: number;
   book_id?: number;
   title: string;
   author: string;
@@ -44,11 +44,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
     try {
-      const res = await axios.get("http://localhost:5000/api/cart", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = Array.isArray(res.data) ? res.data : [];
-      setCart(data);
+      const res = await API.get("/cart");
+      setCart(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error("Gagal sinkronisasi cart:", e);
       setCart([]);
@@ -62,42 +59,28 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
   const addToCart = async (item: any, quantity: number) => {
     const token = localStorage.getItem("bv_token");
     if (!token) throw new Error("Anda harus login terlebih dahulu");
-
-    await axios.post(
-      "http://localhost:5000/api/cart",
-      { bookId: item.id, quantity },
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
+    await API.post("/cart", { bookId: item.id, quantity });
     await fetchCart();
   };
 
   const updateQuantity = async (id: number, quantity: number) => {
     const token = localStorage.getItem("bv_token");
     if (!token) return;
-
     if (quantity <= 0) {
       await removeFromCart(id);
       return;
     }
-
-    await axios.put(
-      `http://localhost:5000/api/cart/${id}`,
-      { quantity },
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
+    await API.put(`/cart/${id}`, { quantity });
     await fetchCart();
   };
 
   const removeFromCart = async (id: number) => {
     const token = localStorage.getItem("bv_token");
     if (!token) return;
-    await axios.delete(`http://localhost:5000/api/cart/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    await API.delete(`/cart/${id}`);
     await fetchCart();
   };
 
-  // ✅ clearCart: 1 request saja ke DELETE /api/cart (hapus semua sekaligus)
   const clearCart = async () => {
     const token = localStorage.getItem("bv_token");
     if (!token) {
@@ -105,9 +88,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
     try {
-      await axios.delete("http://localhost:5000/api/cart", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await API.delete("/cart");
     } catch (e) {
       console.error("Gagal membersihkan cart:", e);
     } finally {
